@@ -1,0 +1,283 @@
+﻿@page "/"
+@using SpesaCondivisa.Services
+@implements IDisposable
+@inject ListaService Lista
+@inject Impostazioni Imp
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>Spesa</PageTitle>
+
+@if (!caricato)
+{
+    <p class="centro tenue">Caricamento…</p>
+}
+else if (!Lista.Configurato)
+{
+    <section class="scheda">
+        <h1>Manca il database</h1>
+        <p>Inserisci l’indirizzo del tuo Firebase Realtime Database nel file
+            <code>wwwroot/appsettings.json</code> e pubblica di nuovo l’app.</p>
+    </section>
+}
+else if (!Imp.Completa || inImpostazioni)
+{
+    <section class="scheda">
+        <h1>🛒 Spesa condivisa</h1>
+        <p class="tenue">Usate lo stesso codice lista sui due telefoni per vedere la stessa lista.</p>
+
+        <label for="nome">Il tuo nome</label>
+        <input id="nome" @bind="nomeInput" placeholder="Es. Francesco" autocomplete="given-name" />
+
+        <label for="codice">Codice lista</label>
+        <input id="codice" @bind="codiceInput" placeholder="Es. k7m2-p9x4-q3w8"
+               autocapitalize="off" autocorrect="off" spellcheck="false" />
+        <button class="link" @onclick="() => codiceInput = Impostazioni.GeneraCodice()">
+            Non ce l’hai? Genera un nuovo codice
+        </button>
+
+        @if (erroreImpostazioni is not null)
+        {
+            <p class="errore">@erroreImpostazioni</p>
+        }
+
+        <div class="riga-pulsanti">
+            @if (Imp.Completa)
+            {
+                <button class="secondario" @onclick="() => inImpostazioni = false">Annulla</button>
+            }
+            <button class="primario" @onclick="SalvaImpostazioni">Inizia</button>
+        </div>
+    </section>
+}
+else
+{
+    <header class="testata">
+        <h1>🛒 Spesa</h1>
+        <div>
+            <button class="icona" title="Invita" @onclick="Invita">👥</button>
+            <button class="icona" title="Impostazioni" @onclick="ApriImpostazioni">⚙️</button>
+        </div>
+    </header>
+
+    <form class="aggiungi" @onsubmit="Aggiungi">
+        <input @bind="nuovoTesto" @bind:event="oninput" placeholder="Cosa serve?" enterkeyhint="done" maxlength="80" />
+        <button class="primario" type="submit" disabled="@string.IsNullOrWhiteSpace(nuovoTesto)">Aggiungi</button>
+    </form>
+
+    @if (messaggio is not null)
+    {
+        <p class="avviso" @onclick="() => messaggio = null">@messaggio</p>
+    }
+
+    @if (articoli.Count == 0)
+    {
+        <p class="centro tenue vuoto">La lista è vuota.<br />Aggiungi la prima cosa da comprare.</p>
+    }
+    else
+    {
+        <ul class="lista">
+            @foreach (var a in DaPrendere)
+            {
+                <li @key="a.Id">
+                    <button class="voce" @onclick="() => Cambia(a)">
+                        <span class="casella"></span>
+                        <span class="testo">@a.Testo<small>@a.AggiuntoDa</small></span>
+                    </button>
+                    <button class="elimina" title="Elimina" @onclick="() => Elimina(a)">✕</button>
+                </li>
+            }
+        </ul>
+
+        @if (Presi.Any())
+        {
+            <div class="sezione-presi">
+                <span>Già presi (@Presi.Count())</span>
+                <button class="link" @onclick="SvuotaPresi">Rimuovi tutti</button>
+            </div>
+            <ul class="lista presi">
+                @foreach (var a in Presi)
+                {
+                    <li @key="a.Id">
+                        <button class="voce" @onclick="() => Cambia(a)">
+                            <span class="casella">✓</span>
+                            <span class="testo"><span class="nome">@a.Testo</span><small>preso da @a.PresoDa</small></span>
+                        </button>
+                        <button class="elimina" title="Elimina" @onclick="() => Elimina(a)">✕</button>
+                    </li>
+                }
+            </ul>
+        }
+    }
+
+    <p class="centro tenue piede">Lista <strong>@Imp.Codice</strong> · aggiornata ogni 4 secondi</p>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "lista")] public string? ListaDaLink { get; set; }
+
+    private List<Articolo> articoli = [];
+    private bool caricato, inImpostazioni, occupato;
+    private string nuovoTesto = "", nomeInput = "", codiceInput = "";
+    private string? messaggio, erroreImpostazioni;
+    private readonly CancellationTokenSource cts = new();
+
+    private IEnumerable<Articolo> DaPrendere => articoli.Where(a => !a.Preso).OrderBy(a => a.Creato);
+    private IEnumerable<Articolo> Presi => articoli.Where(a => a.Preso).OrderBy(a => a.Testo, StringComparer.CurrentCultureIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Imp.CaricaAsync();
+        nomeInput = Imp.Nome;
+        codiceInput = Imp.Codice;
+
+        // Aperto da un link di invito: proponi quel codice.
+        if (!string.IsNullOrWhiteSpace(ListaDaLink))
+        {
+            var codiceLink = Impostazioni.NormalizzaCodice(ListaDaLink);
+            if (codiceLink != Imp.Codice)
+            {
+                codiceInput = codiceLink;
+                inImpostazioni = true;
+            }
+            Nav.NavigateTo(Nav.BaseUri, replace: true);
+        }
+
+        if (Imp.Completa && Lista.Configurato) await Aggiorna();
+        caricato = true;
+        _ = AggiornamentoPeriodico();
+    }
+
+    private async Task AggiornamentoPeriodico()
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(4));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cts.Token))
+            {
+                if (occupato || inImpostazioni || !Imp.Completa || !Lista.Configurato) continue;
+                await Aggiorna();
+                StateHasChanged();
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task Aggiorna()
+    {
+        try
+        {
+            var nuovi = await Lista.CaricaAsync(Imp.Codice);
+            if (!occupato) articoli = nuovi;
+            if (messaggio == MsgOffline) messaggio = null;
+        }
+        catch (Exception)
+        {
+            messaggio = MsgOffline;
+        }
+    }
+
+    private const string MsgOffline = "Non riesco a collegarmi. Controlla la connessione.";
+
+    private async Task SalvaImpostazioni()
+    {
+        erroreImpostazioni = null;
+        var codice = Impostazioni.NormalizzaCodice(codiceInput);
+        if (string.IsNullOrWhiteSpace(nomeInput)) { erroreImpostazioni = "Scrivi il tuo nome."; return; }
+        if (codice.Length < 6) { erroreImpostazioni = "Il codice lista deve avere almeno 6 caratteri."; return; }
+
+        await Imp.SalvaAsync(nomeInput, codice);
+        codiceInput = Imp.Codice;
+        inImpostazioni = false;
+        articoli = [];
+        await Aggiorna();
+    }
+
+    private void ApriImpostazioni()
+    {
+        nomeInput = Imp.Nome;
+        codiceInput = Imp.Codice;
+        erroreImpostazioni = null;
+        inImpostazioni = true;
+    }
+
+    private async Task Aggiungi()
+    {
+        var testo = nuovoTesto.Trim();
+        if (testo.Length == 0) return;
+
+        if (articoli.Any(a => !a.Preso && string.Equals(a.Testo, testo, StringComparison.CurrentCultureIgnoreCase)))
+        {
+            messaggio = $"“{testo}” è già nella lista.";
+            nuovoTesto = "";
+            return;
+        }
+
+        await Esegui(async () =>
+        {
+            var a = await Lista.AggiungiAsync(Imp.Codice, testo, Imp.Nome);
+            articoli.Add(a);
+            nuovoTesto = "";
+        });
+    }
+
+    private Task Cambia(Articolo a) => Esegui(async () =>
+    {
+        var preso = !a.Preso;
+        await Lista.ImpostaPresoAsync(Imp.Codice, a.Id, preso, Imp.Nome);
+        a.Preso = preso;
+        a.PresoDa = preso ? Imp.Nome : null;
+    });
+
+    private Task Elimina(Articolo a) => Esegui(async () =>
+    {
+        await Lista.EliminaAsync(Imp.Codice, a.Id);
+        articoli.Remove(a);
+    });
+
+    private async Task SvuotaPresi()
+    {
+        var presi = Presi.ToList();
+        if (!await JS.InvokeAsync<bool>("confirm", $"Rimuovere {presi.Count} articoli già presi?")) return;
+        await Esegui(async () =>
+        {
+            await Lista.EliminaTantiAsync(Imp.Codice, presi.Select(a => a.Id));
+            articoli.RemoveAll(presi.Contains);
+        });
+    }
+
+    private async Task Invita()
+    {
+        var link = $"{Nav.BaseUri}?lista={Uri.EscapeDataString(Imp.Codice)}";
+        var esito = await JS.InvokeAsync<string>("spesa.condividi", "Spesa condivisa",
+            $"Usiamo questa lista della spesa. Codice lista: {Imp.Codice}", link);
+        if (esito == "copiato") messaggio = "Link copiato: mandalo alla tua compagna.";
+    }
+
+    /// <summary>Esegue una modifica bloccando l'aggiornamento automatico, poi riallinea con il database.</summary>
+    private async Task Esegui(Func<Task> azione)
+    {
+        if (occupato) return;
+        occupato = true;
+        try
+        {
+            await azione();
+            messaggio = null;
+        }
+        catch (Exception)
+        {
+            messaggio = "Modifica non salvata: controlla la connessione e riprova.";
+        }
+        finally
+        {
+            occupato = false;
+        }
+        await Aggiorna();
+    }
+
+    public void Dispose()
+    {
+        cts.Cancel();
+        cts.Dispose();
+    }
+}
