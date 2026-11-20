@@ -159,6 +159,92 @@ input::placeholder { color: var(--tenue); }
 .piu:disabled { opacity: 0.3; }
 .piu svg { stroke-width: 2.6; width: 20px; height: 20px; }
 
+/* ---------- Suggerimenti mentre si scrive ---------- */
+
+.suggerimenti {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 8px);
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    background: var(--carta);
+    border-radius: 16px;
+    box-shadow: 0 12px 32px rgba(28, 33, 30, 0.16), 0 2px 6px rgba(28, 33, 30, 0.08);
+    z-index: 15;
+    animation: entra 0.15s ease-out;
+}
+
+.suggerimenti li { display: flex; align-items: center; }
+
+.sugg {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 12px;
+    background: none;
+    text-align: left;
+    font-weight: 600;
+}
+
+.sugg:active { transform: none; background: var(--verde-chiaro); }
+.sugg-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sugg-testo small { color: var(--tenue); font-weight: 400; font-size: 0.78rem; }
+.sugg-piu { flex: none; color: var(--verde); width: 20px; height: 20px; stroke-width: 2.4; }
+
+.emoji.mini { width: 34px; height: 34px; border-radius: 10px; font-size: 1.1rem; }
+
+.dimentica {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--tenue);
+    display: grid;
+    place-items: center;
+    opacity: 0.5;
+}
+
+.dimentica svg { width: 15px; height: 15px; }
+
+/* ---------- Compri spesso ---------- */
+
+.frequenti {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    margin: 0 -16px;
+    padding: 2px 16px 6px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.frequenti::-webkit-scrollbar { display: none; }
+
+.chip {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px 8px 10px;
+    border: none;
+    border-radius: 999px;
+    background: var(--carta);
+    box-shadow: var(--ombra);
+    font-weight: 600;
+    font-size: 0.92rem;
+    white-space: nowrap;
+}
+
+.chip:active { background: var(--verde-chiaro); }
+
 /* ---------- Sezioni e lista ---------- */
 
 .titolo-sezione {

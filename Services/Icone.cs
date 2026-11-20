@@ -25,7 +25,7 @@ public static class Icone
         ("carot", "🥕"), ("patat", "🥔"), ("cipoll", "🧅"), ("aglio", "🧄"), ("peperon", "🫑"),("broccol", "🥦"),
         ("funghi", "🍄"), ("mais", "🌽"), ("piselli", "🫛"), ("fagiol", "🫘"), ("ceci", "🫘"), ("lenticch", "🫘"), ("verdur", "🥦"),
         ("olio", "🫒"), ("olive", "🫒"), ("sale", "🧂"), ("pepe", "🧂"), ("zucchero", "🍬"), ("miele", "🍯"), ("marmellat", "🍯"),
-        ("caffe", "☕"), ("caffè", "☕"), ("te ", "🍵"), ("tisan", "🍵"), ("cereali", "🥣"), ("muesli", "🥣"),
+        ("caffe", "☕"), ("caffè", "☕"), (" te ", "🍵"), ("tisan", "🍵"), ("cereali", "🥣"), ("muesli", "🥣"),
         ("acqua", "💧"), ("birra", "🍺"), ("vino", "🍷"), ("prosecco", "🥂"), ("succo", "🧃"), ("coca", "🥤"), ("bibit", "🥤"),
         ("surgelat", "🧊"), ("ghiaccio", "🧊"),
         ("carta igienica", "🧻"), ("scottex", "🧻"), ("tovagliol", "🧻"), ("fazzolett", "🤧"),
@@ -58,7 +58,7 @@ public static class Icone
     public static string Iniziale(string nome) =>
         string.IsNullOrWhiteSpace(nome) ? "?" : nome.Trim()[..1].ToUpperInvariant();
 
-    private static string SenzaAccenti(string s)
+    public static string SenzaAccenti(string s)
     {
         var sb = new StringBuilder(s.Length);
         foreach (var c in s.Normalize(NormalizationForm.FormD))

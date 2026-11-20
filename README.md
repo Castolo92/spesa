@@ -102,11 +102,15 @@ Lei apre il link, aggiunge l'app alla Home come al punto 2 e, aprendola dall'ico
 
 | Azione | Come |
 |---|---|
-| Aggiungere | Scrivi l'articolo e premi *Aggiungi* (o Invio). I doppioni vengono segnalati. |
+| Aggiungere | Scrivi l'articolo e premi **+** (o Invio). I doppioni vengono segnalati. |
+| Suggerimenti | Mentre scrivi compaiono le cose che avete già comprato (le più frequenti in alto) e alcuni articoli comuni: un tocco le aggiunge. |
+| Non suggerire più | Tocca ✕ accanto al suggerimento (utile per gli errori di battitura). |
+| Compri spesso | A campo vuoto, la riga *Compri spesso* mostra i vostri articoli abituali: un tocco li aggiunge. |
+| Ricomprare una cosa già presa | Aggiungila di nuovo: torna in lista senza creare un doppione. |
 | Segnare come preso | Tocca l'articolo: finisce in *Già presi*, con il nome di chi l'ha preso. |
 | Togliere la spunta | Toccalo di nuovo. |
 | Eliminare | Tocca ✕. |
-| Svuotare i presi | *Rimuovi tutti*, accanto a *Già presi*. |
+| Svuotare i presi | *Svuota*, accanto a *Già presi*. Lo storico dei suggerimenti resta. |
 | Cambiare nome o lista | ⚙️ |
 
 Le modifiche dell'altra persona compaiono entro circa 4 secondi.
@@ -127,7 +131,9 @@ L'indirizzo del database è visibile nel repository pubblico, ma con le regole d
 | File | Contenuto |
 |---|---|
 | `Pages/Home.razor` | Tutta l'interfaccia: impostazioni e lista |
-| `Services/ListaService.cs` | Lettura e scrittura su Firebase tramite le API REST |
+| `Services/ListaService.cs` | Lettura e scrittura su Firebase tramite le API REST (lista e storico) |
+| `Services/Suggerimenti.cs` | Suggerimenti mentre si scrive e "Compri spesso" |
+| `Services/Icone.cs` | Emoji automatica per ogni articolo |
 | `Services/Impostazioni.cs` | Nome e codice lista salvati nel `localStorage` |
 | `wwwroot/appsettings.json` | Indirizzo del database Firebase |
 | `wwwroot/manifest.webmanifest`, `service-worker*.js` | Ciò che la rende una PWA installabile |

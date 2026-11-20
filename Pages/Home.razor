@@ -70,13 +70,57 @@ else
             </div>
         </header>
 
-        <form class="aggiungi" @onsubmit="Aggiungi">
-            <input @bind="nuovoTesto" @bind:event="oninput" placeholder="Cosa serve?" enterkeyhint="done" maxlength="80" aria-label="Nuovo articolo" />
+        <form class="aggiungi" @onsubmit="() => Aggiungi()">
+            <input @bind="nuovoTesto" @bind:event="oninput" @onfocus="CaricaStorico"
+                   placeholder="Cosa serve?" enterkeyhint="done" maxlength="80" aria-label="Nuovo articolo"
+                   autocomplete="off" autocorrect="off" />
             <button class="piu" type="submit" aria-label="Aggiungi" disabled="@string.IsNullOrWhiteSpace(nuovoTesto)">
                 <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
             </button>
+
+            @if (Suggeriti.Count > 0)
+            {
+                <ul class="suggerimenti" role="listbox" aria-label="Suggerimenti">
+                    @foreach (var s in Suggeriti)
+                    {
+                        <li @key="s.Testo">
+                            <button type="button" class="sugg" role="option" @onclick="() => Aggiungi(s.Testo)">
+                                <span class="emoji mini">@Icone.Per(s.Testo)</span>
+                                <span class="sugg-testo">
+                                    <span>@s.Testo</span>
+                                    @if (s.Volte > 0)
+                                    {
+                                        <small>@(s.Volte == 1 ? "aggiunto 1 volta" : $"aggiunto {s.Volte} volte")</small>
+                                    }
+                                </span>
+                                <svg class="sugg-piu" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+                            </button>
+                            @if (s.Chiave is not null)
+                            {
+                                <button type="button" class="dimentica" aria-label="Non suggerire più @s.Testo"
+                                        title="Non suggerire più" @onclick="() => Dimentica(s)">
+                                    <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                                </button>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
         </form>
     </div>
+
+    @if (nuovoTesto.Length == 0 && Frequenti.Count > 0)
+    {
+        <div class="titolo-sezione"><span>Compri spesso</span></div>
+        <div class="frequenti">
+            @foreach (var v in Frequenti)
+            {
+                <button @key="v.Chiave" class="chip" @onclick="() => Aggiungi(v.Testo)">
+                    <span>@Icone.Per(v.Testo)</span> @v.Testo
+                </button>
+            }
+        </div>
+    }
 
     @if (articoli.Count == 0)
     {
@@ -167,12 +211,17 @@ else
     [SupplyParameterFromQuery(Name = "lista")] public string? ListaDaLink { get; set; }
 
     private List<Articolo> articoli = [];
+    private List<VoceStorico> storico = [];
     private bool caricato, inImpostazioni, occupato, mostraPresi = true;
     private string nuovoTesto = "", nomeInput = "", codiceInput = "";
     private string? messaggio, erroreImpostazioni;
     private readonly CancellationTokenSource cts = new();
 
     private IEnumerable<Articolo> DaPrendere => articoli.Where(a => !a.Preso).OrderBy(a => a.Creato);
+    private List<Suggerimento> Suggeriti =>
+        Suggerimenti.PerTesto(nuovoTesto, storico, DaPrendere.Select(a => a.Testo));
+    private List<VoceStorico> Frequenti =>
+        Suggerimenti.Frequenti(storico, DaPrendere.Select(a => a.Testo));
     private IEnumerable<Articolo> Presi => articoli.Where(a => a.Preso).OrderBy(a => a.Testo, StringComparer.CurrentCultureIgnoreCase);
 
     protected override async Task OnInitializedAsync()
@@ -193,7 +242,11 @@ else
             Nav.NavigateTo(Nav.BaseUri, replace: true);
         }
 
-        if (Imp.Completa && Lista.Configurato) await Aggiorna();
+        if (Imp.Completa && Lista.Configurato)
+        {
+            await Aggiorna();
+            await CaricaStorico();
+        }
         caricato = true;
         _ = AggiornamentoPeriodico();
     }
@@ -263,7 +316,9 @@ else
         codiceInput = Imp.Codice;
         inImpostazioni = false;
         articoli = [];
+        storico = [];
         await Aggiorna();
+        await CaricaStorico();
     }
 
     private void ApriImpostazioni()
@@ -274,24 +329,87 @@ else
         inImpostazioni = true;
     }
 
-    private async Task Aggiungi()
+    /// <summary>Aggiunge il testo scritto, oppure un suggerimento toccato.</summary>
+    private async Task Aggiungi(string? scelto = null)
     {
-        var testo = nuovoTesto.Trim();
+        var testo = string.Join(' ', (scelto ?? nuovoTesto).Split(' ', StringSplitOptions.RemoveEmptyEntries));
         if (testo.Length == 0) return;
+        var chiave = Suggerimenti.Normalizza(testo);
+        var esistente = articoli.FirstOrDefault(a => Suggerimenti.Normalizza(a.Testo) == chiave);
 
-        if (articoli.Any(a => !a.Preso && string.Equals(a.Testo, testo, StringComparison.CurrentCultureIgnoreCase)))
+        if (esistente is { Preso: false })
         {
-            Avvisa($"“{testo}” è già nella lista.");
+            Avvisa($"“{esistente.Testo}” è già nella lista.");
             nuovoTesto = "";
             return;
         }
 
-        await Esegui(async () =>
+        var riuscito = false;
+        if (esistente is { Preso: true })
         {
-            var a = await Lista.AggiungiAsync(Imp.Codice, testo, Imp.Nome);
-            articoli.Add(a);
-            nuovoTesto = "";
-        });
+            // Era tra i già presi: lo rimette in lista invece di creare un doppione.
+            await Esegui(async () =>
+            {
+                await Lista.RimettiInListaAsync(Imp.Codice, esistente, Imp.Nome);
+                riuscito = true;
+            });
+            if (riuscito) Avvisa($"“{esistente.Testo}” rimesso in lista.");
+        }
+        else
+        {
+            await Esegui(async () =>
+            {
+                var a = await Lista.AggiungiAsync(Imp.Codice, testo, Imp.Nome);
+                articoli.Add(a);
+                riuscito = true;
+            });
+        }
+        if (!riuscito) return; // lascia il testo nel campo per riprovare
+        nuovoTesto = "";
+        await RegistraStorico(testo);
+    }
+
+    private async Task CaricaStorico()
+    {
+        if (!Imp.Completa || !Lista.Configurato) return;
+        try
+        {
+            storico = await Lista.CaricaStoricoAsync(Imp.Codice);
+        }
+        catch (Exception)
+        {
+            // Senza storico si usano solo gli articoli comuni.
+        }
+    }
+
+    private async Task RegistraStorico(string testo)
+    {
+        try
+        {
+            var chiave = ListaService.ChiaveStorico(testo);
+            var voce = storico.FirstOrDefault(v => v.Chiave == chiave);
+            var aggiornata = await Lista.RegistraStoricoAsync(Imp.Codice, voce?.Testo ?? testo, voce?.Volte ?? 0);
+            storico.RemoveAll(v => v.Chiave == chiave);
+            storico.Add(aggiornata);
+        }
+        catch (Exception)
+        {
+            // Lo storico è solo un aiuto: se non si salva, la lista funziona comunque.
+        }
+    }
+
+    private async Task Dimentica(Suggerimento s)
+    {
+        if (s.Chiave is null) return;
+        try
+        {
+            await Lista.DimenticaAsync(Imp.Codice, s.Chiave);
+            storico.RemoveAll(v => v.Chiave == s.Chiave);
+        }
+        catch (Exception)
+        {
+            Avvisa("Non riesco a collegarmi. Riprova.");
+        }
     }
 
     private Task Cambia(Articolo a) => Esegui(async () =>
