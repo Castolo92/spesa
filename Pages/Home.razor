@@ -14,110 +14,160 @@
 }
 else if (!Lista.Configurato)
 {
-    <section class="scheda">
+    <section class="benvenuto">
+        <div class="logo">🛒</div>
         <h1>Manca il database</h1>
-        <p>Inserisci l’indirizzo del tuo Firebase Realtime Database nel file
+        <p class="tenue">Inserisci l’indirizzo del tuo Firebase Realtime Database nel file
             <code>wwwroot/appsettings.json</code> e pubblica di nuovo l’app.</p>
     </section>
 }
 else if (!Imp.Completa || inImpostazioni)
 {
-    <section class="scheda">
-        <h1>🛒 Spesa condivisa</h1>
+    <section class="benvenuto">
+        <div class="logo">🛒</div>
+        <h1>@(Imp.Completa ? "Impostazioni" : "Spesa condivisa")</h1>
         <p class="tenue">Usate lo stesso codice lista sui due telefoni per vedere la stessa lista.</p>
 
-        <label for="nome">Il tuo nome</label>
-        <input id="nome" @bind="nomeInput" placeholder="Es. Francesco" autocomplete="given-name" />
+        <div class="scheda modulo">
+            <label for="nome">Il tuo nome</label>
+            <input id="nome" @bind="nomeInput" placeholder="Es. Francesco" autocomplete="given-name" />
 
-        <label for="codice">Codice lista</label>
-        <input id="codice" @bind="codiceInput" placeholder="Es. k7m2-p9x4-q3w8"
-               autocapitalize="off" autocorrect="off" spellcheck="false" />
-        <button class="link" @onclick="() => codiceInput = Impostazioni.GeneraCodice()">
-            Non ce l’hai? Genera un nuovo codice
-        </button>
+            <label for="codice">Codice lista</label>
+            <input id="codice" @bind="codiceInput" placeholder="Es. k7m2-p9x4-q3w8"
+                   autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <button class="link" @onclick="() => codiceInput = Impostazioni.GeneraCodice()">
+                Non ce l’hai? Genera un nuovo codice
+            </button>
+        </div>
 
         @if (erroreImpostazioni is not null)
         {
             <p class="errore">@erroreImpostazioni</p>
         }
 
-        <div class="riga-pulsanti">
-            @if (Imp.Completa)
-            {
-                <button class="secondario" @onclick="() => inImpostazioni = false">Annulla</button>
-            }
-            <button class="primario" @onclick="SalvaImpostazioni">Inizia</button>
-        </div>
+        <button class="primario largo" @onclick="SalvaImpostazioni">@(Imp.Completa ? "Salva" : "Inizia")</button>
+        @if (Imp.Completa)
+        {
+            <button class="link largo" @onclick="() => inImpostazioni = false">Annulla</button>
+        }
     </section>
 }
 else
 {
-    <header class="testata">
-        <h1>🛒 Spesa</h1>
-        <div>
-            <button class="icona" title="Invita" @onclick="Invita">👥</button>
-            <button class="icona" title="Impostazioni" @onclick="ApriImpostazioni">⚙️</button>
-        </div>
-    </header>
+    <div class="barra">
+        <header class="testata">
+            <div>
+                <p class="saluto">Ciao @Imp.Nome 👋</p>
+                <h1>Spesa</h1>
+            </div>
+            <div class="azioni">
+                <button class="icona" title="Invita" aria-label="Invita" @onclick="Invita">
+                    <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M19 8v6M22 11h-6" /></svg>
+                </button>
+                <button class="icona" title="Impostazioni" aria-label="Impostazioni" @onclick="ApriImpostazioni">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+                </button>
+            </div>
+        </header>
 
-    <form class="aggiungi" @onsubmit="Aggiungi">
-        <input @bind="nuovoTesto" @bind:event="oninput" placeholder="Cosa serve?" enterkeyhint="done" maxlength="80" />
-        <button class="primario" type="submit" disabled="@string.IsNullOrWhiteSpace(nuovoTesto)">Aggiungi</button>
-    </form>
-
-    @if (messaggio is not null)
-    {
-        <p class="avviso" @onclick="() => messaggio = null">@messaggio</p>
-    }
+        <form class="aggiungi" @onsubmit="Aggiungi">
+            <input @bind="nuovoTesto" @bind:event="oninput" placeholder="Cosa serve?" enterkeyhint="done" maxlength="80" aria-label="Nuovo articolo" />
+            <button class="piu" type="submit" aria-label="Aggiungi" disabled="@string.IsNullOrWhiteSpace(nuovoTesto)">
+                <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+        </form>
+    </div>
 
     @if (articoli.Count == 0)
     {
-        <p class="centro tenue vuoto">La lista è vuota.<br />Aggiungi la prima cosa da comprare.</p>
+        <div class="vuoto">
+            <div class="vuoto-icona">🧺</div>
+            <h2>La lista è vuota</h2>
+            <p class="tenue">Scrivi qui sopra la prima cosa da comprare.</p>
+        </div>
     }
     else
     {
-        <ul class="lista">
-            @foreach (var a in DaPrendere)
-            {
-                <li @key="a.Id">
-                    <button class="voce" @onclick="() => Cambia(a)">
-                        <span class="casella"></span>
-                        <span class="testo">@a.Testo<small>@a.AggiuntoDa</small></span>
-                    </button>
-                    <button class="elimina" title="Elimina" @onclick="() => Elimina(a)">✕</button>
-                </li>
-            }
-        </ul>
+        <div class="titolo-sezione">
+            <span>Da prendere <span class="conteggio">@DaPrendere.Count()</span></span>
+        </div>
 
-        @if (Presi.Any())
+        @if (!DaPrendere.Any())
         {
-            <div class="sezione-presi">
-                <span>Già presi (@Presi.Count())</span>
-                <button class="link" @onclick="SvuotaPresi">Rimuovi tutti</button>
+            <div class="vuoto piccolo">
+                <div class="vuoto-icona">🎉</div>
+                <h2>Tutto preso!</h2>
             </div>
-            <ul class="lista presi">
-                @foreach (var a in Presi)
+        }
+        else
+        {
+            <ul class="lista">
+                @foreach (var a in DaPrendere)
                 {
-                    <li @key="a.Id">
-                        <button class="voce" @onclick="() => Cambia(a)">
-                            <span class="casella">✓</span>
-                            <span class="testo"><span class="nome">@a.Testo</span><small>preso da @a.PresoDa</small></span>
+                    <li @key="a.Id" class="voce">
+                        <button class="tocca" @onclick="() => Cambia(a)" aria-label="Segna @a.Testo come preso">
+                            <span class="spunta"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
+                            <span class="emoji">@Icone.Per(a.Testo)</span>
+                            <span class="testo">
+                                <span class="nome">@a.Testo</span>
+                                <small>@a.AggiuntoDa · @Quando(a.Creato)</small>
+                            </span>
                         </button>
-                        <button class="elimina" title="Elimina" @onclick="() => Elimina(a)">✕</button>
+                        <button class="elimina" aria-label="Elimina @a.Testo" @onclick="() => Elimina(a)">
+                            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                        </button>
                     </li>
                 }
             </ul>
         }
+
+        @if (Presi.Any())
+        {
+            <div class="titolo-sezione">
+                <button class="espandi" @onclick="() => mostraPresi = !mostraPresi" aria-expanded="@mostraPresi">
+                    Già presi <span class="conteggio">@Presi.Count()</span>
+                    <svg class="freccia @(mostraPresi ? "aperta" : "")" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+                <button class="link" @onclick="SvuotaPresi">Svuota</button>
+            </div>
+
+            @if (mostraPresi)
+            {
+                <ul class="lista presi">
+                    @foreach (var a in Presi)
+                    {
+                        <li @key="a.Id" class="voce">
+                            <button class="tocca" @onclick="() => Cambia(a)" aria-label="Rimetti @a.Testo da prendere">
+                                <span class="spunta"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
+                                <span class="emoji">@Icone.Per(a.Testo)</span>
+                                <span class="testo">
+                                    <span class="nome">@a.Testo</span>
+                                    <small>preso da @a.PresoDa</small>
+                                </span>
+                            </button>
+                            <button class="elimina" aria-label="Elimina @a.Testo" @onclick="() => Elimina(a)">
+                                <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+        }
     }
 
-    <p class="centro tenue piede">Lista <strong>@Imp.Codice</strong> · aggiornata ogni 4 secondi</p>
+    <p class="piede">Lista <strong>@Imp.Codice</strong></p>
+}
+
+@if (messaggio is not null)
+{
+    <div class="avviso @(messaggio == MsgOffline ? "offline" : "")" role="status" @onclick="() => messaggio = null">@messaggio</div>
 }
 
 @code {
     [SupplyParameterFromQuery(Name = "lista")] public string? ListaDaLink { get; set; }
 
     private List<Articolo> articoli = [];
-    private bool caricato, inImpostazioni, occupato;
+    private bool caricato, inImpostazioni, occupato, mostraPresi = true;
     private string nuovoTesto = "", nomeInput = "", codiceInput = "";
     private string? messaggio, erroreImpostazioni;
     private readonly CancellationTokenSource cts = new();
@@ -179,6 +229,29 @@ else
 
     private const string MsgOffline = "Non riesco a collegarmi. Controlla la connessione.";
 
+    /// <summary>Mostra un avviso che sparisce da solo dopo qualche secondo.</summary>
+    private async void Avvisa(string testo)
+    {
+        messaggio = testo;
+        StateHasChanged();
+        await Task.Delay(3500);
+        if (messaggio == testo)
+        {
+            messaggio = null;
+            StateHasChanged();
+        }
+    }
+
+    private static string Quando(long creatoMs)
+    {
+        var diff = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeMilliseconds(creatoMs);
+        if (diff.TotalMinutes < 1) return "adesso";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes} min fa";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours} h fa";
+        if (diff.TotalDays < 2) return "ieri";
+        return $"{(int)diff.TotalDays} giorni fa";
+    }
+
     private async Task SalvaImpostazioni()
     {
         erroreImpostazioni = null;
@@ -208,7 +281,7 @@ else
 
         if (articoli.Any(a => !a.Preso && string.Equals(a.Testo, testo, StringComparison.CurrentCultureIgnoreCase)))
         {
-            messaggio = $"“{testo}” è già nella lista.";
+            Avvisa($"“{testo}” è già nella lista.");
             nuovoTesto = "";
             return;
         }
@@ -251,7 +324,7 @@ else
         var link = $"{Nav.BaseUri}?lista={Uri.EscapeDataString(Imp.Codice)}";
         var esito = await JS.InvokeAsync<string>("spesa.condividi", "Spesa condivisa",
             $"Usiamo questa lista della spesa. Codice lista: {Imp.Codice}", link);
-        if (esito == "copiato") messaggio = "Link copiato: mandalo alla tua compagna.";
+        if (esito == "copiato") Avvisa("Link copiato: mandalo alla tua compagna.");
     }
 
     /// <summary>Esegue una modifica bloccando l'aggiornamento automatico, poi riallinea con il database.</summary>
@@ -262,11 +335,11 @@ else
         try
         {
             await azione();
-            messaggio = null;
+            if (messaggio == MsgOffline) messaggio = null;
         }
         catch (Exception)
         {
-            messaggio = "Modifica non salvata: controlla la connessione e riprova.";
+            Avvisa("Modifica non salvata: controlla la connessione e riprova.");
         }
         finally
         {
